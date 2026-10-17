@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:native": "vite build --base=./ --mode native",
+    "build:native": "vite build --base=./ --mode native --outDir dist-native",
     "preview": "vite preview --port 4173",
     "sync": "npm run build:native && npx cap sync android",
     "open:android": "cap open android"

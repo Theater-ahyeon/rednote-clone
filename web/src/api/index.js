@@ -104,5 +104,4 @@ export const api = {
   health: () => request('/api/health')
 };
 
-export const API_BASE = BASE;
 export default api;

@@ -28,7 +28,7 @@
     ],
     "extraResources": [
       {
-        "from": "../web/dist",
+        "from": "../web/dist-native",
         "to": "web"
       }
     ],

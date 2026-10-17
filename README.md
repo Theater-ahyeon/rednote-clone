@@ -80,8 +80,7 @@ rednote-clone/
 │  │  ├─ api/              # fetch 封装（自动适配 代理/file:// 双模式）
 │  │  └─ styles/global.css # 设计令牌（品牌红 #ff2442 等，全部来自逆向提取）
 │  ├─ android/             # Capacitor 生成的 Android 原生工程（可直接 Android Studio 打开）
-│  └─ capacitor.config.json
-├─ desktop/                # Windows 桌面端（Electron）
+│  └─ capacitor.config.json├─ desktop/                # Windows 桌面端（Electron）
 │  ├─ src/main.js          # 主进程（430×932、后端探活引导页）
 │  └─ resources/icon.png   # 应用图标（脚本生成的品牌红心形）
 ├─ scripts/                # dev.js 并行启动 / screenshot.js 截图 / android-icon.js 图标生成
@@ -107,6 +106,7 @@ rednote-clone/
 npm install          # 根目录一次装好 server + web 两个 workspace
 npm run seed         # 灌入演示数据（14 用户 / 50 笔记），体验账号 demo / 123456
 npm run start        # 启动 API → http://localhost:3001
+npm test             # 后端接口测试（node:test，6 个用例：鉴权/幂等/分页/上传白名单）
 ```
 
 ### 2. 网页版（开发模式，热更新）
@@ -119,9 +119,11 @@ npm run dev          # 并行拉起 API(:3001) 与 Vite(:5173)
 ### 3. 网页版（生产模式，单端口部署）
 
 ```bash
-npm run build        # 构建 web/dist
+npm run build        # 构建 web/dist（base:'/'，history 路由）
 npm run start        # Express 同时托管 API 与静态页面 → http://localhost:3001
 ```
+
+> 两套构建产物是分开的，互不覆盖：`web/dist`（网页版，绝对路径）/ `web/dist-native`（Android 与 Windows 客户端，`base:'./'`）。`npm run android:sync` 与 `desktop/npm run dist` 都会自动先打 native 包。
 
 ### 4. Android 客户端
 

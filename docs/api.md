@@ -72,7 +72,6 @@
 | POST | `/api/users/:id/follow` | 关注/取关（幂等切换）🔒 |
 | GET | `/api/users/:id/followers` | 粉丝列表 |
 | GET | `/api/users/:id/following` | 关注列表 |
-| GET | `/api/users/:id/stats` | 主页统计数字 |
 
 ## 4. 搜索 `/api/search`
 

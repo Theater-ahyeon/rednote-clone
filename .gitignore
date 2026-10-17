@@ -24,3 +24,6 @@ release/
 
 # electron-builder 目录模式输出（--dir）
 desktop/dist/
+
+# 原生客户端构建产物（独立于网页版 dist，避免 base 路径互相覆盖）
+web/dist-native/

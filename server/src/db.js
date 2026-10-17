@@ -22,8 +22,9 @@ db.pragma('foreign_keys = ON');
 
 export const UPLOADS = UPLOAD_DIR;
 
-export function initSchema() {
-  db.exec(`
+// 模块加载即建表（IF NOT EXISTS，幂等）：
+// 其它模块在 import 时就会 db.prepare，若等 index.js 里再建表，全新数据库一启动就崩。
+db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     username     TEXT NOT NULL UNIQUE,
@@ -129,7 +130,5 @@ export function initSchema() {
     sort INTEGER NOT NULL DEFAULT 0
   );
   `);
-  return db;
-}
 
 export default db;

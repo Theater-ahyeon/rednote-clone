@@ -55,23 +55,28 @@ router.post('/:id/follow', requireAuth, (req, res) => {
   const target = db.prepare('SELECT * FROM users WHERE id = ?').get(targetId);
   if (!target) return fail(res, '用户不存在', 404);
 
-  const exist = db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?').get(uid, targetId);
-  if (exist) {
-    db.prepare('DELETE FROM follows WHERE follower_id = ? AND followee_id = ?').run(uid, targetId);
-    db.prepare('UPDATE users SET follower_count = MAX(0, follower_count - 1) WHERE id = ?').run(targetId);
-    db.prepare('UPDATE users SET following_count = MAX(0, following_count - 1) WHERE id = ?').run(uid);
-  } else {
-    db.prepare('INSERT INTO follows (follower_id, followee_id, created_at) VALUES (?, ?, ?)').run(uid, targetId, Date.now());
-    db.prepare('UPDATE users SET follower_count = follower_count + 1 WHERE id = ?').run(targetId);
-    db.prepare('UPDATE users SET following_count = following_count + 1 WHERE id = ?').run(uid);
-    db.prepare(
-      `INSERT INTO messages (box, from_user_id, to_user_id, content, created_at)
-       VALUES ('follows', ?, ?, ?, ?)`
-    ).run(uid, targetId, '关注了你', Date.now());
-  }
+  // 事务内完成关注/取关与双方计数增减，避免并发下计数漂移
+  const followTx = db.transaction((uid2, targetId2) => {
+    const exist2 = db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?').get(uid2, targetId2);
+    if (exist2) {
+      db.prepare('DELETE FROM follows WHERE follower_id = ? AND followee_id = ?').run(uid2, targetId2);
+      db.prepare('UPDATE users SET follower_count = MAX(0, follower_count - 1) WHERE id = ?').run(targetId2);
+      db.prepare('UPDATE users SET following_count = MAX(0, following_count - 1) WHERE id = ?').run(uid2);
+    } else {
+      db.prepare('INSERT INTO follows (follower_id, followee_id, created_at) VALUES (?, ?, ?)').run(uid2, targetId2, Date.now());
+      db.prepare('UPDATE users SET follower_count = follower_count + 1 WHERE id = ?').run(targetId2);
+      db.prepare('UPDATE users SET following_count = following_count + 1 WHERE id = ?').run(uid2);
+      db.prepare(
+        `INSERT INTO messages (box, from_user_id, to_user_id, content, created_at)
+         VALUES ('follows', ?, ?, ?, ?)`
+      ).run(uid2, targetId2, '关注了你', Date.now());
+    }
+    return !exist2;
+  });
+  const isFollowing = followTx(uid, targetId);
   const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(targetId);
   return ok(res, {
-    isFollowing: !exist,
+    isFollowing,
     followerCount: fresh.follower_count,
     followingCount: db.prepare('SELECT following_count c FROM users WHERE id = ?').get(uid).c
   });
@@ -102,22 +107,11 @@ function relation(kind) {
 router.get('/:id/followers', relation('followers'));
 router.get('/:id/following', relation('following'));
 
-/** GET /api/users/suggest —— 你可能感兴趣的人（未登录也能看） */
+/** GET /api/users —— 你可能感兴趣的人（未登录也能看） */
 router.get('/', (_req, res) => {
   const viewer = _req.user?.id || 0;
   const rows = db.prepare('SELECT * FROM users ORDER BY follower_count DESC LIMIT 20').all();
   return ok(res, { users: rows.map((r) => publicUser(r, viewer)) });
-});
-
-/** GET /api/users/:id/stats —— 主页顶部数字 */
-router.get('/:id/stats', (req, res) => {
-  const id = Number(req.params.id);
-  const u = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
-  if (!u) return fail(res, '用户不存在', 404);
-  const notes = db.prepare('SELECT COUNT(*) c FROM notes WHERE user_id = ?').get(id).c;
-  const likes = db.prepare('SELECT COUNT(*) c FROM likes WHERE user_id = ?').get(id).c;
-  const collects = db.prepare('SELECT COUNT(*) c FROM collects WHERE user_id = ?').get(id).c;
-  return ok(res, { notes, following: u.following_count, followers: u.follower_count, likeCollect: likes + collects });
 });
 
 export default router;

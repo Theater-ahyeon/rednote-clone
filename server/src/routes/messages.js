@@ -55,6 +55,7 @@ router.get('/:box', requireAuth, (req, res) => {
     )
     .all(uid, box);
   db.prepare('UPDATE messages SET read = 1 WHERE to_user_id = ? AND box = ?').run(uid, box);
+  const coverOf = db.prepare('SELECT images FROM notes WHERE id = ?');
   const list = rows.map((m) => ({
     id: String(m.id),
     box: m.box,
@@ -63,9 +64,7 @@ router.get('/:box', requireAuth, (req, res) => {
     time: timeAgo(m.created_at),
     createdAt: m.created_at,
     user: { id: m.from_user_id, nickname: m.nickname, avatar: m.avatar },
-    noteCover: m.note_id
-      ? (JSON.parse(db.prepare('SELECT images FROM notes WHERE id = ?').get(m.note_id)?.images || '[]')[0] || null)
-      : null
+    noteCover: m.note_id ? JSON.parse(coverOf.get(m.note_id)?.images || '[]')[0] || null : null
   }));
   return ok(res, { list });
 });

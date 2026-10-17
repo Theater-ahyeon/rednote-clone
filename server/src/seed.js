@@ -4,12 +4,11 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, initSchema, UPLOADS } from './db.js';
+import { db, UPLOADS } from './db.js';
 import { hashPassword } from './utils/auth.js';
 import { makeCover, makeAvatar, hashSeed } from './utils/placeholder.js';
 
 const RESET = process.argv.includes('--reset');
-initSchema();
 
 if (RESET) {
   db.exec(`

@@ -38,11 +38,12 @@ export function publicUser(row, viewerId) {
   };
 }
 
-const { getLikeState } = (() => {
-  const lq = db.prepare('SELECT 1 FROM likes WHERE user_id = ? AND note_id = ?');
-  const cq = db.prepare('SELECT 1 FROM collects WHERE user_id = ? AND note_id = ?');
-  return { getLikeState: (uid, nid) => ({ liked: uid ? !!lq.get(uid, nid) : false, collected: uid ? !!cq.get(uid, nid) : false }) };
-})();
+const likeQuery = db.prepare('SELECT 1 FROM likes WHERE user_id = ? AND note_id = ?');
+const collectQuery = db.prepare('SELECT 1 FROM collects WHERE user_id = ? AND note_id = ?');
+
+function getLikeState(uid, nid) {
+  return { liked: uid ? !!likeQuery.get(uid, nid) : false, collected: uid ? !!collectQuery.get(uid, nid) : false };
+}
 
 /** 把 notes 行序列化成前端 noteCard 结构（对应逆向得到的 noteCard 字段） */
 export function publicNote(row, viewerId, { withUser = true } = {}) {
@@ -88,11 +89,4 @@ export function timeAgo(ts) {
   return `${d.getMonth() + 1}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function dateLabel(ts) {
-  const d = new Date(ts);
-  const diff = Date.now() - ts;
-  if (diff < 24 * 60 * 60 * 1000) return timeAgo(ts);
-  return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-export default { ok, fail, parseJSON, publicUser, publicNote, bumpCommentCount, timeAgo, dateLabel };
+export default { ok, fail, parseJSON, publicUser, publicNote, bumpCommentCount, timeAgo };

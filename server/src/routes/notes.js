@@ -57,14 +57,18 @@ router.get('/:id', (req, res) => {
   if (!row) return fail(res, '笔记不存在或已删除', 404);
   db.prepare('UPDATE notes SET view_count = view_count + 1 WHERE id = ?').run(row.id);
 
-  const related = db
-    .prepare(
-      `SELECT n.* FROM notes n
-       WHERE n.id <> ? AND (n.topics LIKE '%' || ? || '%' OR n.user_id = ?)
-       ORDER BY n.created_at DESC LIMIT 12`
-    )
-    .all(row.id, (JSON.parse(row.topics || '[]')[0] || ''), row.user_id)
-    .map((r) => publicNote(r, viewer));
+  // 相关推荐：instr 不做 LIKE 通配，话题里的 % 或 _ 不会让结果漂移；话题为空时不匹配任何笔记
+  const topic = JSON.parse(row.topics || '[]')[0] || '';
+  const related = topic
+    ? db
+        .prepare(
+          `SELECT n.* FROM notes n
+           WHERE n.id <> ? AND instr(n.topics, ?) > 0
+           ORDER BY n.created_at DESC LIMIT 12`
+        )
+        .all(row.id, topic)
+        .map((r) => publicNote(r, viewer))
+    : [];
 
   return ok(res, { note: publicNote(row, viewer), relatedNotes: related });
 });
@@ -93,28 +97,45 @@ router.delete('/:id', requireAuth, (req, res) => {
   return ok(res, null, '已删除');
 });
 
-function toggle(table, countCol) {
+// 事务内完成「读关系 → 写关系 → 增减计数」：既保留种子数据的展示计数，
+// 又避免并发双击时计数与关系表不一致（better-sqlite3 事务是同步原子的）
+function makeToggle(table, countCol) {
+  const find = db.prepare(`SELECT 1 FROM ${table} WHERE user_id = ? AND note_id = ?`);
+  const del = db.prepare(`DELETE FROM ${table} WHERE user_id = ? AND note_id = ?`);
+  const ins = db.prepare(`INSERT INTO ${table} (user_id, note_id, created_at) VALUES (?, ?, ?)`);
+  const bump = db.prepare(`UPDATE notes SET ${countCol} = MAX(0, ${countCol} + ?) WHERE id = ?`);
+  return db.transaction((uid, noteId) => {
+    const exist = find.get(uid, noteId);
+    if (exist) {
+      del.run(uid, noteId);
+      bump.run(-1, noteId);
+    } else {
+      ins.run(uid, noteId, Date.now());
+      bump.run(1, noteId);
+    }
+    return !exist;
+  });
+}
+
+const toggleLike = makeToggle('likes', 'like_count');
+const toggleCollect = makeToggle('collects', 'collect_count');
+
+function toggle(kind) {
+  const run = kind === 'like' ? toggleLike : toggleCollect;
   return (req, res) => {
     const noteId = Number(req.params.id);
-    const uid = req.user.id;
     const note = db.prepare('SELECT * FROM notes WHERE id = ?').get(noteId);
     if (!note) return fail(res, '笔记不存在', 404);
-    const exist = db.prepare(`SELECT 1 FROM ${table} WHERE user_id = ? AND note_id = ?`).get(uid, noteId);
-    if (exist) {
-      db.prepare(`DELETE FROM ${table} WHERE user_id = ? AND note_id = ?`).run(uid, noteId);
-      db.prepare(`UPDATE notes SET ${countCol} = MAX(0, ${countCol} - 1) WHERE id = ?`).run(noteId);
-    } else {
-      db.prepare(`INSERT INTO ${table} (user_id, note_id, created_at) VALUES (?, ?, ?)`).run(uid, noteId, Date.now());
-      db.prepare(`UPDATE notes SET ${countCol} = ${countCol} + 1 WHERE id = ?`).run(noteId);
-      if (table === 'likes') {
-        db.prepare(
-          `INSERT INTO messages (box, from_user_id, to_user_id, note_id, content, created_at)
-           VALUES ('likes', ?, ?, ?, ?, ?)`
-        ).run(uid, note.user_id, noteId, '赞了你的笔记', Date.now());
-      }
+    const liked = run(req.user.id, noteId);
+    // 自己操作自己不产生消息
+    if (liked && kind === 'like' && req.user.id !== note.user_id) {
+      db.prepare(
+        `INSERT INTO messages (box, from_user_id, to_user_id, note_id, content, created_at)
+         VALUES ('likes', ?, ?, ?, ?, ?)`
+      ).run(req.user.id, note.user_id, noteId, '赞了你的笔记', Date.now());
     }
     const fresh = db.prepare('SELECT * FROM notes WHERE id = ?').get(noteId);
-    const self = publicNote(fresh, uid);
+    const self = publicNote(fresh, req.user.id);
     return ok(res, {
       liked: self.interactInfo.liked,
       collected: self.interactInfo.collected,
@@ -125,9 +146,9 @@ function toggle(table, countCol) {
 }
 
 /** POST /api/notes/:id/like —— 点赞/取消点赞 */
-router.post('/:id/like', requireAuth, toggle('likes', 'like_count'));
+router.post('/:id/like', requireAuth, toggle('like'));
 /** POST /api/notes/:id/collect —— 收藏/取消收藏 */
-router.post('/:id/collect', requireAuth, toggle('collects', 'collect_count'));
+router.post('/:id/collect', requireAuth, toggle('collect'));
 
 /** GET /api/notes/:id/comments —— 一级评论 + 子评论（最多 3 条预览） */
 router.get('/:id/comments', (req, res) => {
