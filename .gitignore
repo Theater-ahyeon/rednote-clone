@@ -1,0 +1,20 @@
+# 依赖
+node_modules/
+
+# 构建产物
+web/dist/
+web/android/.gradle/
+web/android/local.properties
+desktop/release/
+
+# 运行时数据（数据库与上传文件不入库，npm run seed 可随时重建）
+server/data/
+server/public/uploads/*
+!server/public/uploads/.gitkeep
+
+# 环境与系统
+.env
+.env.local
+*.log
+.DS_Store
+Thumbs.db

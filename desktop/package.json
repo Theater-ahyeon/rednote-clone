@@ -1,0 +1,49 @@
+{
+  "name": "rednote-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RedNote Clone —— Windows 桌面客户端（Electron 封装）",
+  "main": "src/main.js",
+  "author": "Theater-ahyeon",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env REDNOTE_DEV_URL=http://localhost:5173 electron .",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.rednote.clone",
+    "productName": "小红书",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "resources/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "resources/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "小红书"
+    }
+  }
+}
