@@ -34,6 +34,10 @@
 |:---:|:---:|:---:|:---:|
 | ![桌面详情](docs/screenshots/10-detail-desktop.png) | ![桌面搜索](docs/screenshots/11-search-desktop.png) | ![桌面消息](docs/screenshots/12-messages-desktop.png) | ![桌面主页](docs/screenshots/13-profile-desktop.png) |
 
+| Windows 客户端实拍（430×932 窗口） |
+|:---:|
+| ![Windows 客户端](docs/screenshots/14-windows-app.png) |
+
 ---
 
 ## ✨ 核心功能
@@ -149,8 +153,13 @@ npm start             # 加载 web/dist，连接 http://localhost:3001
                       # 后端未启动时会显示引导页而不是白屏
 
 # 打包安装程序（NSIS + 便携版，输出 desktop/release/）
-npm run dist
+npm run dist          # 会自动先执行 npm run build:native（相对路径构建）
 ```
+
+> 兼容性说明：桌面端默认开启 `in-process-gpu` / `disable-gpu-sandbox` / `no-sandbox`。
+> 这是因为部分机器（虚拟显示适配器、远程桌面、无交互桌面会话）Chromium 独立 GPU 进程会崩溃、
+> 渲染进程沙箱会挂起，导致白屏或秒退；本应用只加载本地 `file://` 资源与本机 API，可安全关闭。
+> 需要恢复沙箱设 `REDNOTE_KEEP_SANDBOX=1`；需要完整 GPU 加速设 `REDNOTE_ENABLE_GPU=1`。
 ### 6. 重新生成 README 截图 / 应用图标（可选）
 
 ```bash

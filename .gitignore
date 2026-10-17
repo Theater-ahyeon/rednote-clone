@@ -21,3 +21,6 @@ Thumbs.db
 
 # 本地打包产物（用户自行构建）
 release/
+
+# electron-builder 目录模式输出（--dir）
+desktop/dist/

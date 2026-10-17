@@ -7,6 +7,26 @@
 const { app, BrowserWindow, shell, Menu } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const os = require('node:os');
+
+/**
+ * 兼容性开关（默认开启，均可用环境变量覆盖）：
+ * 1. in-process-gpu / disable-gpu-sandbox：部分机器（虚拟显示适配器、远程桌面、
+ *    无交互桌面会话）独立 GPU 进程会直接崩溃（0xC0000005 → FATAL）导致秒退；
+ * 2. no-sandbox：上述受限环境下渲染进程沙箱初始化会挂起（页面白屏、CDP 无响应）。
+ *    本应用只加载本地 file:// 资源 + 本机 localhost API，关闭渲染沙箱的收益大于风险；
+ *    如需恢复沙箱可设 REDNOTE_KEEP_SANDBOX=1。
+ */
+app.commandLine.appendSwitch('in-process-gpu');
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+if (process.env.REDNOTE_KEEP_SANDBOX !== '1') app.commandLine.appendSwitch('no-sandbox');
+if (process.env.REDNOTE_ENABLE_GPU === '1') app.disableHardwareAcceleration();
+
+const DEBUG = process.env.REDNOTE_DEBUG;
+const log = (m) => {
+  if (DEBUG) fs.appendFileSync(path.join(os.tmpdir(), 'rednote-debug.log'), `${new Date().toISOString()} ${m}\n`);
+};
+log(`main.js loaded, isPackaged=${app.isPackaged}, hwAccel=${process.env.REDNOTE_ENABLE_GPU === '1'}`);
 
 const DEV_URL = process.env.REDNOTE_DEV_URL || '';
 const API_URL = process.env.REDNOTE_API_URL || 'http://localhost:3001';
@@ -40,10 +60,12 @@ function createWindow() {
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
     // 打包后：extraResources 里的 web/；开发时：仓库内的 web/dist
-    const indexHtml = app.isPackaged
-      ? path.join(process.resourcesPath, 'web', 'index.html')
-      : path.join(__dirname, '..', '..', 'web', 'dist', 'index.html');
-    win.loadFile(indexHtml);
+  const indexHtml = app.isPackaged
+    ? path.join(process.resourcesPath, 'web', 'index.html')
+    : path.join(__dirname, '..', '..', 'web', 'dist', 'index.html');
+  log(`loading ${indexHtml} exists=${fs.existsSync(indexHtml)}`);
+  win.loadFile(indexHtml);
+  log('loadFile called');
   }
 
   // 后端未启动时给出明确提示页
@@ -70,11 +92,19 @@ npm start      # 默认 http://localhost:3001</pre>
 }
 
 app.whenReady().then(() => {
+  log('whenReady fired');
   // 生产模式下探测一次后端，不通则直接展示引导页
   if (!DEV_URL) {
     fetch(`${API_URL}/api/health`)
-      .then((r) => (r.ok ? createWindow() : showBackendMissing()))
-      .catch(() => showBackendMissing());
+      .then((r) => {
+        log(`health ok=${r.ok}`);
+        if (r.ok) createWindow();
+        else showBackendMissing();
+      })
+      .catch((e) => {
+        log(`health failed: ${e.message}`);
+        showBackendMissing();
+      });
   } else {
     createWindow();
   }
