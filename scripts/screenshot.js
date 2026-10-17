@@ -72,7 +72,10 @@ function findBrowser() {
     { name: '07-profile-mobile', url: '/me', w: 390, h: 844 },
     { name: '08-login-mobile', url: '/login', w: 390, h: 844, guest: true },
     { name: '09-home-desktop', url: '/', w: 1440, h: 900 },
-    { name: '10-detail-desktop', url: `/note/${sampleId}`, w: 1440, h: 900 }
+    { name: '10-detail-desktop', url: `/note/${sampleId}`, w: 1440, h: 900 },
+    { name: '11-search-desktop', url: '/search?keyword=穿搭', w: 1440, h: 900 },
+    { name: '12-messages-desktop', url: '/messages', w: 1440, h: 900 },
+    { name: '13-profile-desktop', url: '/me', w: 1440, h: 900 }
   ];
 
   for (const s of shots) {

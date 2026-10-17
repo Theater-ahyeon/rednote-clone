@@ -13,6 +13,10 @@
 |:---:|:---:|:---:|:---:|
 | ![发布](docs/screenshots/05-publish-mobile.png) | ![消息](docs/screenshots/06-messages-mobile.png) | ![结果](docs/screenshots/04-result-mobile.png) | ![桌面](docs/screenshots/09-home-desktop.png) |
 
+| 桌面端详情 | 桌面端搜索 | 桌面端消息 | 桌面端个人主页 |
+|:---:|:---:|:---:|:---:|
+| ![桌面详情](docs/screenshots/10-detail-desktop.png) | ![桌面搜索](docs/screenshots/11-search-desktop.png) | ![桌面消息](docs/screenshots/12-messages-desktop.png) | ![桌面主页](docs/screenshots/13-profile-desktop.png) |
+
 ---
 
 ## ✨ 核心功能

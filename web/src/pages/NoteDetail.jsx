@@ -235,7 +235,7 @@ export default function NoteDetail() {
             {[0, 1].map((col) => (
               <div className="waterfall-col" key={col}>
                 {related.filter((_, i) => i % 2 === col).map((n) => (
-                  <a key={n.id} href={`#/note/${n.id}`} onClick={() => navigate(`/note/${n.id}`)}>
+                  <Link key={n.id} to={`/note/${n.id}`} onClick={() => setIdx(0)}>
                     <SmartImage
                       className="note-cover"
                       src={n.cover?.url}
@@ -243,7 +243,7 @@ export default function NoteDetail() {
                       ratio={n.cover?.w && n.cover?.h ? `${n.cover.w} / ${n.cover.h}` : '3 / 4'}
                     />
                     <div className="note-title" style={{ padding: '6px 4px 10px' }}>{n.title}</div>
-                  </a>
+                  </Link>
                 ))}
               </div>
             ))}
