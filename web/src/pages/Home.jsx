@@ -88,6 +88,7 @@ export default function Home() {
   const onTouchMove = (e) => {
     const dy = e.touches[0].clientY - startY.current;
     if (dy > 60 && window.scrollY === 0 && !refreshing) {
+      e.preventDefault(); // 阻止浏览器自带的下拉回弹，避免双重滚动
       setRefreshing(true);
       setCursor(null);
       load(true);

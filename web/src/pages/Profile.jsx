@@ -21,6 +21,7 @@ export default function Profile() {
   const me = useUserStore((s) => s.user);
   const token = useUserStore((s) => s.token);
   const patchUser = useUserStore((s) => s.patchUser);
+  const logout = useUserStore((s) => s.logout);
 
   const selfMode = location.pathname === '/me';
   const uid = selfMode ? me?.id : Number(id);
@@ -66,7 +67,22 @@ export default function Profile() {
     }
   };
 
-  if (!user) return <div className="empty">加载中…</div>;
+  if (!user) {
+    if (selfMode && !token) {
+      return (
+        <div className="empty">
+          <span className="empty-emoji">🔑</span>
+          登录后查看个人主页
+          <div style={{ marginTop: 16 }}>
+            <button className="btn btn-primary" onClick={() => navigate('/login', { state: { from: '/me' } })}>
+              去登录
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return <div className="empty">加载中…</div>;
+  }
   const isSelf = user.isSelf || (me && me.id === user.id);
 
   return (
@@ -113,8 +129,8 @@ export default function Profile() {
               <button className="btn btn-ghost" onClick={() => setEditing(true)}>
                 编辑资料
               </button>
-              <button className="btn btn-ghost" onClick={() => toast('设置：演示版未展开')}>
-                设置
+              <button className="btn btn-ghost" onClick={logout}>
+                退出登录
               </button>
             </>
           ) : (

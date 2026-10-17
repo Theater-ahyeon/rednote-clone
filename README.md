@@ -1,7 +1,24 @@
 # RedNote Clone —— 仿小红书（RED / RedNote）全栈应用
 
+[![Release](https://img.shields.io/github/v/release/Theater-ahyeon/rednote-clone?style=flat-square&color=ff2442)](https://github.com/Theater-ahyeon/rednote-clone/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![Node](https://img.shields.io/badge/Node-%E2%89%A518.18-brightgreen?style=flat-square)](#0-环境要求)
+
 > 基于对小红书 PC Web 端的逆向分析（构建产物静态分析 → 设计令牌 / 接口语义 / 数据模型），从零实现的一套**高保真仿小红书**应用。
 > 一份 React 代码，同时跑在 **Web 浏览器、Android 客户端（Capacitor）、Windows 桌面客户端（Electron）** 三个端。
+
+## 📦 直接下载安装包
+
+**→ [Releases 页面](https://github.com/Theater-ahyeon/rednote-clone/releases/latest)**（当前 v1.0.0）
+
+| 文件 | 平台 | 说明 |
+|---|---|---|
+| `rednote-clone-1.0.0-android.apk` | Android 7.0+ | 手机侧载或 `adb install` |
+| `rednote-clone-1.0.0-setup.exe` | Windows 10/11 x64 | NSIS 安装程序（可选安装目录） |
+| `rednote-clone-1.0.0-portable.exe` | Windows 10/11 x64 | 便携版，免安装双击即用 |
+
+> 安装包未做代码签名，Windows SmartScreen 可能提示「未知发布者」——「更多信息 → 仍要运行」即可。
+> 三个客户端都只负责界面，数据来自本机后端：`cd server && npm install && npm run seed && npm start`（默认 `http://localhost:3001`）；Android 端再执行 `adb reverse tcp:3001 tcp:3001`。
 
 **体验账号：`demo` / `123456`**（内置 14 个用户、50 篇笔记、195 条评论，也可自行注册）
 
@@ -134,7 +151,6 @@ npm start             # 加载 web/dist，连接 http://localhost:3001
 # 打包安装程序（NSIS + 便携版，输出 desktop/release/）
 npm run dist
 ```
-
 ### 6. 重新生成 README 截图 / 应用图标（可选）
 
 ```bash

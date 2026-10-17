@@ -104,7 +104,18 @@ export default function Search() {
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
           />
-          {text && <Icon name="close" size={15} color="#bbb" onClick={() => { setText(''); setSuggest([]); }} />}
+          {text && (
+            <Icon
+              name="close"
+              size={15}
+              color="#bbb"
+              onClick={() => {
+                setText('');
+                setSuggest([]);
+                if (keyword) setParams({}); // 清空后回到热搜页
+              }}
+            />
+          )}
         </div>
         <button className="search-btn" onClick={() => submit()}>
           搜索
