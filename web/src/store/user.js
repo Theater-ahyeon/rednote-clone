@@ -49,8 +49,8 @@ export const useUserStore = create(
         if (!get().token) return 0;
         try {
           const { count } = await api.unread();
-          set({ unread: count });
-          return count;
+          set({ unread: count || 0 });
+          return count || 0;
         } catch {
           return 0;
         }

@@ -7,24 +7,45 @@ function fmtCount(n) {
   return String(n ?? 0);
 }
 
+/** 纯文字笔记的占位封面（无图也能发，卡片不空骨架） */
+const PLACEHOLDER_COLORS = [
+  ['#ffe3e8', '#ffd0d8'],
+  ['#e8f1ff', '#d0e2ff'],
+  ['#e6f9ef', '#c9f2dd'],
+  ['#fff4dd', '#ffe4b8'],
+  ['#f1e9ff', '#ded0ff']
+];
+
+function TextCover({ id, title }) {
+  const [c1, c2] = PLACEHOLDER_COLORS[Math.abs(Number(id) || 0) % PLACEHOLDER_COLORS.length];
+  return (
+    <div
+      className="note-cover"
+      style={{ aspectRatio: '3 / 4', background: `linear-gradient(135deg, ${c1}, ${c2})`, display: 'flex', alignItems: 'flex-end', padding: 12 }}
+    >
+      <span style={{ fontSize: 13, color: 'rgba(51,51,51,.65)', lineHeight: '19px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        {title}
+      </span>
+    </div>
+  );
+}
+
 /** 单张笔记卡片（对应小红书 noteCard） */
 export default function NoteCard({ note, onClick, onUserClick }) {
-  const cover = note.cover || note.images?.[0] || {};
-  const ratio = cover.w && cover.h ? `${cover.w} / ${cover.h}` : '3 / 4';
+  const cover = note.cover || note.images?.[0] || null;
+  const ratio = cover?.w && cover?.h ? `${cover.w} / ${cover.h}` : '3 / 4';
   const liked = note.interactInfo?.liked;
 
   return (
     <article className="note-card" onClick={() => onClick?.(note)}>
-      <div style={{ position: 'relative' }}>
-        <SmartImage
-          className="note-cover"
-          src={cover.url}
-          fallback={cover.fallback}
-          alt={note.title}
-          ratio={ratio}
-        />
-        {(note.images?.length || 0) > 1 && <span className="multi-tag">{note.images.length}图</span>}
-      </div>
+      {cover?.url || cover?.fallback ? (
+        <div style={{ position: 'relative' }}>
+          <SmartImage className="note-cover" src={cover.url} fallback={cover.fallback} alt={note.title} ratio={ratio} />
+          {(note.images?.length || 0) > 1 && <span className="multi-tag">{note.images.length}图</span>}
+        </div>
+      ) : (
+        <TextCover id={note.id} title={note.title || note.desc} />
+      )}
       <div className="note-body">
         <div className="note-title">{note.title || note.desc}</div>
         <div className="note-foot">

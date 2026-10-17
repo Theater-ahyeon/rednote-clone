@@ -36,6 +36,12 @@ router.get('/', requireAuth, (req, res) => {
   return ok(res, { boxes, totalUnread: boxes.reduce((s, b) => s + b.unread, 0) });
 });
 
+/** GET /api/messages/unread/count —— 角标（必须先于 /:box 注册，否则被其吞掉） */
+router.get('/unread/count', requireAuth, (req, res) => {
+  const c = db.prepare('SELECT COUNT(*) c FROM messages WHERE to_user_id = ? AND read = 0').get(req.user.id).c;
+  return ok(res, { count: c });
+});
+
 /** GET /api/messages/:box —— 某个 box 的消息列表 */
 router.get('/:box', requireAuth, (req, res) => {
   const uid = req.user.id;
@@ -68,12 +74,6 @@ router.get('/:box', requireAuth, (req, res) => {
 router.post('/read-all', requireAuth, (req, res) => {
   db.prepare('UPDATE messages SET read = 1 WHERE to_user_id = ?').run(req.user.id);
   return ok(res, null, '已全部标记为已读');
-});
-
-/** GET /api/messages/unread/count —— 角标 */
-router.get('/unread/count', requireAuth, (req, res) => {
-  const c = db.prepare('SELECT COUNT(*) c FROM messages WHERE to_user_id = ? AND read = 0').get(req.user.id).c;
-  return ok(res, { count: c });
 });
 
 export default router;

@@ -9,7 +9,7 @@
     "build": "vite build",
     "build:native": "vite build --base=./ --mode native",
     "preview": "vite preview --port 4173",
-    "sync": "npm run build:native && cap sync android",
+    "sync": "npm run build:native && npx cap sync android",
     "open:android": "cap open android"
   },
   "dependencies": {

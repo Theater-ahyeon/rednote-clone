@@ -10,8 +10,15 @@ const TABS = [
   { to: '/me', label: '我', icon: 'user' }
 ];
 
+/** 全屏页面不显示底部导航（与官方一致）：发布 / 登录 / 笔记详情 */
+function hideTabbar(pathname) {
+  return pathname === '/publish' || pathname === '/login' || pathname.startsWith('/note/');
+}
+
 export function TabBar() {
   const unread = useUserStore((s) => s.unread);
+  const { pathname } = useLocation();
+  if (hideTabbar(pathname)) return null;
   return (
     <nav className="tabbar">
       <TabItem {...TABS[0]} />

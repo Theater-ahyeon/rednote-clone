@@ -933,7 +933,7 @@ img {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 60;
+  z-index: 95; /* 必须高于遮罩层(80)，否则发送按钮会被遮罩拦截点击 */
   background: #fff;
   border-top: 1px solid var(--line);
   padding: 10px 12px calc(10px + var(--safe-b));

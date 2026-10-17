@@ -140,7 +140,13 @@ export default function NoteDetail() {
           if (dx < -40) setIdx((i) => Math.min(images.length - 1, i + 1));
         }}
       >
-        <img src={images[idx]?.url} alt="" onError={(e) => { if (images[idx]?.fallback) e.target.src = images[idx].fallback; }} />
+        {images.length ? (
+          <img src={images[idx]?.url} alt="" onError={(e) => { if (images[idx]?.fallback) e.target.src = images[idx].fallback; }} />
+        ) : (
+          <div style={{ minHeight: 340, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 90, background: 'linear-gradient(135deg,#ffe3e8,#f6f7fb)' }}>
+            📝
+          </div>
+        )}
       </div>
       {images.length > 1 && (
         <div className="detail-dots">
