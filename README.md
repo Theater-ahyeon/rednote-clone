@@ -42,10 +42,10 @@
 
 ## ✨ 核心功能
 
-- **首页信息流**：双列瀑布流（移动 2 列 → 桌面 5 列自适应）、「发现 / 关注 / 附近」频道、话题频道条、下拉刷新、无限滚动
-- **笔记**：图文发布（最多 9 图，本地上传）、图片轮播详情、点赞 / 收藏 / 评论（二级评论）/ 分享数、相关推荐
-- **搜索**：热搜榜（热/新/爆角标）、搜索历史、联想词、综合/最新/最热排序
-- **社交**：注册登录（JWT）、关注 / 取关、粉丝与关注列表、个人主页（笔记 / 收藏 / 赞过 三个 Tab）、资料编辑
+- **首页信息流**：双列瀑布流（移动 2 列 → 桌面 5 列自适应）、「发现 / 关注 / 附近」频道、话题频道条（服务端按话题过滤）、下拉刷新、无限滚动
+- **笔记**：图文发布（最多 9 图，本地上传）、图片轮播详情、点赞 / 收藏 / 评论（多级回复按根评论归组）/ 分享数、相关推荐
+- **搜索**：热搜榜（热/新/爆角标）、搜索历史、联想词、综合（互动加权）/ 最新 / 最热 三档真实排序
+- **社交**：注册登录（JWT + 登录限流）、关注 / 取关、粉丝与关注列表、个人主页（笔记 / 收藏 / 赞过 三个 Tab，滚动分页）、资料编辑
 - **消息**：与官方一致的三个盒子（赞和收藏 / 新增关注 / 评论和@）、未读角标、全部已读
 
 ## 🧱 技术栈
@@ -100,13 +100,22 @@ rednote-clone/
 
 > 本仓库开发验证环境：Windows 11 / Node 22.22 / JDK 21.0.12（Temurin）/ android-35 / Gradle 8.10.2
 
+**环境变量（都有安全默认值，部署时请显式设置）**
+
+| 变量 | 默认 | 作用 |
+|---|---|---|
+| `PORT` | `3001` | API 端口 |
+| `JWT_SECRET` | 内置开发密钥（`NODE_ENV=production` 时缺失会拒绝启动） | 签发 token |
+| `DB_FILE` | `server/data/rednote.db` | SQLite 路径 |
+| `DEMO_LOGIN` | 非 production 时开 | `GET /api/auth/demo` 一键体验开关；置 `0` 关闭、`1` 开启 |
+
 ### 1. 启动后端（API :3001）
 
 ```bash
 npm install          # 根目录一次装好 server + web 两个 workspace
 npm run seed         # 灌入演示数据（14 用户 / 50 笔记），体验账号 demo / 123456
 npm run start        # 启动 API → http://localhost:3001
-npm test             # 后端接口测试（node:test，6 个用例：鉴权/幂等/分页/上传白名单）
+npm test             # 后端接口测试（node:test，13 个用例：鉴权/幂等/分页/上传白名单/越权删除/多级回复/排序/频道/演示开关）
 ```
 
 ### 2. 网页版（开发模式，热更新）
@@ -161,7 +170,9 @@ npm run dist          # 会自动先执行 npm run build:native（相对路径�
 > 兼容性说明：桌面端默认开启 `in-process-gpu` / `disable-gpu-sandbox` / `no-sandbox`。
 > 这是因为部分机器（虚拟显示适配器、远程桌面、无交互桌面会话）Chromium 独立 GPU 进程会崩溃、
 > 渲染进程沙箱会挂起，导致白屏或秒退；本应用只加载本地 `file://` 资源与本机 API，可安全关闭。
-> 需要恢复沙箱设 `REDNOTE_KEEP_SANDBOX=1`；需要完整 GPU 加速设 `REDNOTE_ENABLE_GPU=1`。
+> 需要恢复沙箱设 `REDNOTE_KEEP_SANDBOX=1`；需要关闭硬件加速排障设 `REDNOTE_DISABLE_GPU=1`。
+> 开发态注意：`npm start` 加载的是 `web/dist-native`（`base:'./'`），首次请先跑 `npm --prefix web run build:native`，
+> 或设 `REDNOTE_DEV_URL=http://localhost:5173` 直连 Vite。用 `web/dist` 会在 `file://` 下全 404 白屏。
 ### 6. 重新生成 README 截图 / 应用图标（可选）
 
 ```bash

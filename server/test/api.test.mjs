@@ -156,3 +156,124 @@ test('搜索与评论', async () => {
   const list = await api(`/api/notes/${noteId}/comments`);
   assert.ok(list.data.comments.some((x) => x.content === '测试评论'));
 });
+
+test('一键体验只认 demo 账号（不返回库里第一个用户）', async () => {
+  // 先造一个更早注册的账号：老实现会返回「库里第一个用户」，那就是越权
+  await api('/api/auth/register', { method: 'POST', body: { username: 'zzz_first', password: 'abc12345' } });
+  const reg = await api('/api/auth/register', { method: 'POST', body: { username: 'demo', password: '123456' } });
+  assert.equal(reg.code, 0);
+
+  const d = await api('/api/auth/demo');
+  assert.equal(d.code, 0, '非 production 环境下默认可用');
+  assert.equal(d.data.user.username, 'demo');
+  const me = await api('/api/auth/me', { token: d.data.token });
+  assert.equal(me.data.username, 'demo');
+});
+
+test('多级回复：三层楼全部可见，且都归到同一条一级评论下', async () => {
+  const token = globalThis.__token;
+  const note = await api('/api/notes', { method: 'POST', body: { title: '楼中楼', content: 'x' }, token });
+  const nid = note.data.id;
+  const a = await api(`/api/notes/${nid}/comments`, { method: 'POST', body: { content: 'A 一级' }, token });
+  const b = await api(`/api/notes/${nid}/comments`, { method: 'POST', body: { content: 'B 回A', parentId: a.data.id }, token });
+  const c = await api(`/api/notes/${nid}/comments`, { method: 'POST', body: { content: 'C 回B', parentId: b.data.id }, token });
+
+  assert.equal(b.data.rootId, a.data.id);
+  assert.equal(c.data.rootId, a.data.id, '回复二级评论也要挂回根评论，否则刷新后消失');
+
+  const list = await api(`/api/notes/${nid}/comments`);
+  assert.equal(list.data.total, 3);
+  const root = list.data.comments.find((x) => x.id === a.data.id);
+  assert.equal(root.subComments.length, 2, '两条回复都应可见');
+});
+
+test('跨笔记 parentId 必须被拒绝（否则是计数漂移的幽灵评论）', async () => {
+  const token = globalThis.__token;
+  const n1 = await api('/api/notes', { method: 'POST', body: { title: 'A 笔记', content: 'x' }, token });
+  const n2 = await api('/api/notes', { method: 'POST', body: { title: 'B 笔记', content: 'x' }, token });
+  const c1 = await api(`/api/notes/${n1.data.id}/comments`, { method: 'POST', body: { content: 'A 的评论' }, token });
+
+  const bad = await api(`/api/notes/${n2.data.id}/comments`, {
+    method: 'POST',
+    body: { content: '挂到别的笔记的评论下', parentId: c1.data.id },
+    token
+  });
+  assert.equal(bad.code, 400);
+  const list = await api(`/api/notes/${n2.data.id}/comments`);
+  assert.equal(list.data.total, 0, '被拒绝后不应留下任何行');
+});
+
+test('不能删除别人上传的文件（越权删除）', async () => {
+  const token = globalThis.__token;
+  const fd = new FormData();
+  fd.append('file', new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' }), 'a.jpg');
+  const up = await api('/api/upload', { method: 'POST', token, form: fd });
+  assert.equal(up.code, 0);
+
+  const other = await api('/api/auth/register', {
+    method: 'POST',
+    body: { username: `x${Date.now() % 100000}`, password: 'abc12345' }
+  });
+  const del = await api(`/api/upload?url=${encodeURIComponent(up.data.url)}`, { method: 'DELETE', token: other.data.token });
+  assert.equal(del.code, 403, '他人文件必须 403');
+
+  const own = await api(`/api/upload?url=${encodeURIComponent(up.data.url)}`, { method: 'DELETE', token });
+  assert.equal(own.code, 0, '自己的文件应可删除');
+});
+
+test('搜索三档排序真的不同 + 通配符不命中全表', async () => {
+  const token = globalThis.__token;
+  // 先发「热门」，再发「最新」：这样两种排序的首位必然不同，才能证明不是同一个 SQL
+  const hot = await api('/api/notes', { method: 'POST', body: { title: '排序热门条目', content: '排序实验' }, token });
+  await api(`/api/notes/${hot.data.id}/like`, { method: 'POST', token });
+  const fresh = await api('/api/notes', { method: 'POST', body: { title: '排序最新条目', content: '排序实验' }, token });
+
+  const byTime = await api('/api/search/notes?keyword=排序实验&sort=time');
+  const byHot = await api('/api/search/notes?keyword=排序实验&sort=hot');
+  assert.equal(byTime.data.sort, 'time');
+  assert.equal(byHot.data.sort, 'hot');
+  assert.equal(byTime.data.notes[0].id, fresh.data.id, '最新排序应把后发的排前面');
+  assert.equal(byHot.data.notes[0].id, hot.data.id, '最热排序应把有点赞的排前面');
+
+  const wildcard = await api('/api/search/notes?keyword=%25');
+  assert.equal(wildcard.data.total, 0, '搜 "%" 不应命中全表');
+});
+
+test('频道筛选在服务端生效', async () => {
+  const token = globalThis.__token;
+  await api('/api/notes', { method: 'POST', body: { title: '露营装备', content: 'x', topics: ['露营'] }, token });
+  await api('/api/notes', { method: 'POST', body: { title: '咖啡探店', content: 'x', topics: ['咖啡'] }, token });
+  const d = await api(`/api/notes/feed?channel=${encodeURIComponent('露营')}&limit=20`);
+  assert.ok(d.data.notes.length >= 1);
+  assert.ok(
+    d.data.notes.every((n) => n.topics.includes('露营')),
+    '频道筛选必须全量在服务端过滤，不能只过滤已加载的前 20 条'
+  );
+});
+
+test('生产模式下一键体验默认关闭', async () => {
+  const port2 = 3800 + Math.floor(Math.random() * 300);
+  const child2 = spawn(process.execPath, ['src/index.js'], {
+    cwd: path.resolve(import.meta.dirname, '..'),
+    env: { ...process.env, PORT: String(port2), DB_FILE: path.join(tmp, 'test.db'), JWT_SECRET: 'x', NODE_ENV: 'production', DEMO_LOGIN: '' },
+    stdio: 'ignore'
+  });
+  try {
+    let ready = false;
+    for (let i = 0; i < 50; i++) {
+      try {
+        if ((await fetch(`http://localhost:${port2}/api/health`)).ok) {
+          ready = true;
+          break;
+        }
+      } catch {}
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    assert.ok(ready, '生产实例应能启动');
+    const res = await fetch(`http://localhost:${port2}/api/auth/demo`);
+    const json = await res.json();
+    assert.equal(json.code, 404, 'production 下 demo 后门必须关闭');
+  } finally {
+    child2.kill();
+  }
+});

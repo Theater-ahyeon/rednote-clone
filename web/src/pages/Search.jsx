@@ -30,6 +30,7 @@ export default function Search() {
   const [sort, setSort] = useState('general');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
+  const seq = useRef(0);
 
   useEffect(() => {
     api.hot().then((d) => setHot(d.list)).catch(() => {});
@@ -55,18 +56,22 @@ export default function Search() {
   }, [text, keyword]);
 
   const doSearch = async (kw, p = 1, s = sort, reset = false) => {
+    // 请求序号：快速切排序/连续搜索时，慢的旧响应不允许覆盖新结果
+    const my = seq.current + 1;
+    seq.current = my;
     setLoading(true);
     try {
-      const d = await api.searchNotes({ keyword: kw, page: p, sort: s === 'hot' ? 'hot' : undefined });
+      const d = await api.searchNotes({ keyword: kw, page: p, sort: s, pageSize: 20 });
+      if (my !== seq.current) return;
       setNotes((prev) => (reset || p === 1 ? d.notes : [...prev, ...d.notes]));
       setPage(p);
       setHasMore(d.hasMore);
       setSuggest([]);
       if (token) api.searchHistory().then((r) => setHistory(r.list)).catch(() => {});
     } catch (e) {
-      toast(e.message);
+      if (my === seq.current) toast(e.message);
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
   };
 

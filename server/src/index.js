@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { optionalAuth } from './middleware/auth.js';
 import { ok } from './utils/index.js';
+import { db } from './db.js';
+import { demoLoginEnabled } from './routes/auth.js';
 
 import authRoutes from './routes/auth.js';
 import noteRoutes from './routes/notes.js';
@@ -22,10 +24,9 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(optionalAuth);
 
 // 上传目录：用户可控内容，禁止 MIME 嗅探；SVG 按文档加载时用 CSP 禁掉脚本，堵住存储型 XSS
-// 上传目录：用户可控内容，禁止 MIME 嗅探；SVG 按文档加载时用 CSP 禁掉脚本，堵住存储型 XSS
+// 注意必须挂在 optionalAuth 之前：静态图片不需要鉴权，也不必为每张图查一次数据库
 const uploads = path.resolve(__dirname, '../public/uploads');
 fs.mkdirSync(uploads, { recursive: true });
 app.use('/uploads', (req, res, next) => {
@@ -35,6 +36,9 @@ app.use('/uploads', (req, res, next) => {
   }
   next();
 }, express.static(uploads, { maxAge: '7d' }));
+
+// 只有 /api 需要解析 token
+app.use('/api', optionalAuth);
 
 // API
 app.get('/api/health', (_req, res) => ok(res, { status: 'ok', time: Date.now() }));
@@ -63,14 +67,31 @@ if (fs.existsSync(dist)) {
 }
 
 if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('  ❌ 生产模式必须设置 JWT_SECRET，已拒绝启动（内置密钥等于没有鉴权）。');
+    process.exit(1);
+  }
   console.warn('  ⚠️  未设置 JWT_SECRET，正在使用内置开发密钥。部署前请设置环境变量 JWT_SECRET。');
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\n  🟥 RedNote API 已启动  →  http://localhost:${PORT}`);
   console.log(`     静态资源          →  http://localhost:${PORT}/uploads`);
+  console.log(`     一键体验账号      →  ${demoLoginEnabled() ? '已开启' : '已关闭（DEMO_LOGIN=1 可开启）'}`);
   if (fs.existsSync(dist)) console.log(`     网页版            →  http://localhost:${PORT}\n`);
   else console.log(`     网页版请先执行    →  npm run dev（前端开发服务器 :5173）\n`);
 });
+
+// 优雅退出：保证 WAL 落盘、端口释放（否则 dev 反复重启偶发 EADDRINUSE）
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    server.close(() => {
+      try {
+        db.close();
+      } catch {}
+      process.exit(0);
+    });
+  });
+}
 
 export default app;

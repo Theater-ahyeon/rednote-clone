@@ -17,11 +17,21 @@ export function parseJSON(str, fallback) {
   }
 }
 
-export function publicUser(row, viewerId) {
+/** LIKE 通配符转义：用户搜 "%" 时不应该命中全表（配合 `LIKE ? ESCAPE '\'` 使用） */
+export function escapeLike(str) {
+  return String(str).replace(/[\\%_]/g, (m) => '\\' + m);
+}
+
+const inClause = (n) => Array(n).fill('?').join(',');
+
+export function publicUser(row, viewerId, { isFollowing } = {}) {
   if (!row) return null;
-  const following = viewerId
-    ? !!db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?').get(viewerId, row.id)
-    : false;
+  const following =
+    isFollowing !== undefined
+      ? isFollowing
+      : viewerId
+        ? !!db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?').get(viewerId, row.id)
+        : false;
   return {
     id: row.id,
     username: row.username,
@@ -38,19 +48,8 @@ export function publicUser(row, viewerId) {
   };
 }
 
-const likeQuery = db.prepare('SELECT 1 FROM likes WHERE user_id = ? AND note_id = ?');
-const collectQuery = db.prepare('SELECT 1 FROM collects WHERE user_id = ? AND note_id = ?');
-
-function getLikeState(uid, nid) {
-  return { liked: uid ? !!likeQuery.get(uid, nid) : false, collected: uid ? !!collectQuery.get(uid, nid) : false };
-}
-
-/** 把 notes 行序列化成前端 noteCard 结构（对应逆向得到的 noteCard 字段） */
-export function publicNote(row, viewerId, { withUser = true } = {}) {
-  if (!row) return null;
+function shapeNote(row, { viewerId, liked, collected, user, following }) {
   const images = parseJSON(row.images, []);
-  const state = getLikeState(viewerId, row.id);
-  const user = withUser ? db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id) : null;
   return {
     id: String(row.id),
     noteId: String(row.id),
@@ -66,12 +65,71 @@ export function publicNote(row, viewerId, { withUser = true } = {}) {
       likedCount: row.like_count,
       collectedCount: row.collect_count,
       commentCount: row.comment_count,
+      // 演示用派生值（官方是真实分享上报），按浏览量估算，仅用于视觉对齐
       shareCount: Math.max(1, Math.round(row.view_count / 12)),
-      liked: state.liked,
-      collected: state.collected
+      liked,
+      collected
     },
-    user: withUser ? publicUser(user, viewerId) : null
+    user: user ? publicUser(user, viewerId, { isFollowing: following }) : null
   };
+}
+
+/**
+ * 批量序列化笔记：把「每张卡片 4 次查询」压成「整页 4 次查询」。
+ * 之前 20 条的 feed 要跑 80 次 SQL（like / collect / user / follow 各一遍）。
+ */
+export function serializeNotes(rows, viewerId) {
+  if (!rows || !rows.length) return [];
+  const ids = rows.map((r) => r.id);
+  const uids = [...new Set(rows.map((r) => r.user_id))];
+  const uid = viewerId || 0;
+
+  const liked = new Set(
+    uid
+      ? db
+          .prepare(`SELECT note_id FROM likes WHERE user_id = ? AND note_id IN (${inClause(ids.length)})`)
+          .all(uid, ...ids)
+          .map((r) => r.note_id)
+      : []
+  );
+  const collected = new Set(
+    uid
+      ? db
+          .prepare(`SELECT note_id FROM collects WHERE user_id = ? AND note_id IN (${inClause(ids.length)})`)
+          .all(uid, ...ids)
+          .map((r) => r.note_id)
+      : []
+  );
+  const users = new Map(
+    db
+      .prepare(`SELECT * FROM users WHERE id IN (${inClause(uids.length)})`)
+      .all(...uids)
+      .map((u) => [u.id, u])
+  );
+  const following = new Set(
+    uid
+      ? db
+          .prepare(`SELECT followee_id FROM follows WHERE follower_id = ? AND followee_id IN (${inClause(uids.length)})`)
+          .all(uid, ...uids)
+          .map((r) => r.followee_id)
+      : []
+  );
+
+  return rows.map((row) =>
+    shapeNote(row, {
+      viewerId: uid,
+      liked: liked.has(row.id),
+      collected: collected.has(row.id),
+      user: users.get(row.user_id),
+      following: following.has(row.user_id)
+    })
+  );
+}
+
+/** 单条笔记序列化（详情页 / 发布后回显），内部复用批量实现 */
+export function publicNote(row, viewerId) {
+  if (!row) return null;
+  return serializeNotes([row], viewerId)[0];
 }
 
 export function bumpCommentCount(noteId, delta) {
@@ -89,4 +147,4 @@ export function timeAgo(ts) {
   return `${d.getMonth() + 1}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default { ok, fail, parseJSON, publicUser, publicNote, bumpCommentCount, timeAgo };
+export default { ok, fail, parseJSON, escapeLike, publicUser, publicNote, serializeNotes, bumpCommentCount, timeAgo };

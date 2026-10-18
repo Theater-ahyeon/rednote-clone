@@ -20,13 +20,14 @@ const os = require('node:os');
 app.commandLine.appendSwitch('in-process-gpu');
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 if (process.env.REDNOTE_KEEP_SANDBOX !== '1') app.commandLine.appendSwitch('no-sandbox');
-if (process.env.REDNOTE_ENABLE_GPU === '1') app.disableHardwareAcceleration();
+// 默认保留硬件加速；只有明确要排障时才关（之前 REDNOTE_ENABLE_GPU=1 反而调用了 disable，语义是反的）
+if (process.env.REDNOTE_DISABLE_GPU === '1') app.disableHardwareAcceleration();
 
 const DEBUG = process.env.REDNOTE_DEBUG;
 const log = (m) => {
   if (DEBUG) fs.appendFileSync(path.join(os.tmpdir(), 'rednote-debug.log'), `${new Date().toISOString()} ${m}\n`);
 };
-log(`main.js loaded, isPackaged=${app.isPackaged}, hwAccel=${process.env.REDNOTE_ENABLE_GPU === '1'}`);
+log(`main.js loaded, isPackaged=${app.isPackaged}, hwAccel=${process.env.REDNOTE_DISABLE_GPU === '1' ? 'off' : 'on'}`);
 
 const DEV_URL = process.env.REDNOTE_DEV_URL || '';
 const API_URL = process.env.REDNOTE_API_URL || 'http://localhost:3001';
@@ -59,13 +60,28 @@ function createWindow() {
     win.loadURL(DEV_URL);
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
-    // 打包后：extraResources 里的 web/；开发时：仓库内的 web/dist
-  const indexHtml = app.isPackaged
-    ? path.join(process.resourcesPath, 'web', 'index.html')
-    : path.join(__dirname, '..', '..', 'web', 'dist', 'index.html');
-  log(`loading ${indexHtml} exists=${fs.existsSync(indexHtml)}`);
-  win.loadFile(indexHtml);
-  log('loadFile called');
+    // 必须加载 dist-native（base:'./'），不能用 web/dist（base:'/'）：
+    // file:// 下 /assets/xxx.js 会被解析成 file:///E:/assets/xxx.js → 全 404 → 白屏
+    const indexHtml = app.isPackaged
+      ? path.join(process.resourcesPath, 'web', 'index.html')
+      : path.join(__dirname, '..', '..', 'web', 'dist-native', 'index.html');
+    log(`loading ${indexHtml} exists=${fs.existsSync(indexHtml)}`);
+    if (fs.existsSync(indexHtml)) {
+      win.loadFile(indexHtml);
+    } else {
+      win.loadURL(
+        'data:text/html;charset=utf-8,' +
+          encodeURIComponent(
+            `<body style="font-family:PingFang SC,Microsoft YaHei;padding:40px;background:#fff">
+              <h2 style="color:#ff2442">🟥 缺少客户端构建产物</h2>
+              <p style="color:#666">桌面端需要 <code>web/dist-native</code>（相对路径构建），当前不存在：</p>
+              <pre style="background:#f5f5f5;padding:12px;border-radius:8px">npm --prefix web run build:native</pre>
+              <p style="color:#999">或者在开发时设置 REDNOTE_DEV_URL=http://localhost:5173 直连 Vite。</p>
+            </body>`
+          )
+      );
+    }
+    log('load call finished');
   }
 
   // 后端未启动时给出明确提示页

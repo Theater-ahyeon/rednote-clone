@@ -28,9 +28,12 @@ export default function Profile() {
 
   const [user, setUser] = useState(null);
   const [notes, setNotes] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [tab, setTab] = useState('notes');
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ nickname: '', bio: '', gender: 'unknown', ipLocation: '广东' });
+  const [form, setForm] = useState({ nickname: '', bio: '', gender: 'unknown' });
+  const PAGE = 20;
 
   useEffect(() => {
     if (!uid) return;
@@ -38,15 +41,43 @@ export default function Profile() {
       .user(uid)
       .then((u) => {
         setUser(u);
-        setForm({ nickname: u.nickname, bio: u.bio, gender: u.gender, ipLocation: u.ipLocation });
+        setForm({ nickname: u.nickname, bio: u.bio, gender: u.gender });
       })
       .catch((e) => toast(e.message || '用户不存在'));
   }, [uid]);
 
+  // 分页：之前固定只取前 20 条且没有「加载更多」，主页永远只能看到 20 篇
   useEffect(() => {
     if (!uid) return;
-    api.userNotes(uid, { tab }).then((d) => setNotes(d.notes)).catch(() => setNotes([]));
+    let alive = true;
+    setNotes([]);
+    setHasMore(false);
+    api
+      .userNotes(uid, { tab, limit: PAGE, offset: 0 })
+      .then((d) => {
+        if (!alive) return;
+        setNotes(d.notes);
+        setHasMore(!!d.hasMore);
+      })
+      .catch(() => alive && setNotes([]));
+    return () => {
+      alive = false;
+    };
   }, [uid, tab]);
+
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const d = await api.userNotes(uid, { tab, limit: PAGE, offset: notes.length });
+      setNotes((prev) => [...prev, ...d.notes.filter((n) => !prev.some((p) => p.id === n.id))]);
+      setHasMore(!!d.hasMore);
+    } catch (e) {
+      toast(e.message || '加载失败');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const follow = async () => {
     if (!token) return navigate('/login', { state: { from: `/user/${uid}` } });
@@ -160,12 +191,23 @@ export default function Profile() {
           {tab === 'notes' ? '还没有发布过笔记' : tab === 'collects' ? '还没有收藏' : '还没有点赞'}
         </div>
       ) : (
-        <Waterfall
-          notes={notes}
-          cols={cols}
-          onCardClick={(n) => navigate(`/note/${n.id}`)}
-          onUserClick={(u) => u?.id && navigate(`/user/${u.id}`)}
-        />
+        <>
+          <Waterfall
+            notes={notes}
+            cols={cols}
+            onCardClick={(n) => navigate(`/note/${n.id}`)}
+            onUserClick={(u) => u?.id && navigate(`/user/${u.id}`)}
+          />
+          <div className="loading-more">
+            {hasMore ? (
+              <button className="btn btn-ghost btn-sm" disabled={loadingMore} onClick={loadMore}>
+                {loadingMore ? '加载中…' : '加载更多'}
+              </button>
+            ) : (
+              '— 没有更多了 —'
+            )}
+          </div>
+        </>
       )}
 
       {editing && (
@@ -181,10 +223,6 @@ export default function Profile() {
                 <span style={{ width: 52, color: '#999' }}>简介</span>
                 <input value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
               </div>
-              <div className="field">
-                <span style={{ width: 52, color: '#999' }}>属地</span>
-                <input value={form.ipLocation} onChange={(e) => setForm({ ...form, ipLocation: e.target.value })} />
-              </div>
               <div className="field" style={{ borderBottom: 'none' }}>
                 <span style={{ width: 52, color: '#999' }}>性别</span>
                 {['female', 'male', 'unknown'].map((g) => (
@@ -198,7 +236,8 @@ export default function Profile() {
                 ))}
               </div>
             </div>
-            <div className="modal-foot">
+            <div className="modal-foot" style={{ alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: '#bbb', marginRight: 'auto' }}>IP 属地由服务端判定，不可手动修改</span>
               <button onClick={() => setEditing(false)}>取消</button>
               <button className="confirm" onClick={save}>
                 保存

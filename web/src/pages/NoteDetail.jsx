@@ -21,6 +21,7 @@ export default function NoteDetail() {
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const touchX = useRef(0);
+  const busy = useRef(false);
 
   useEffect(() => {
     setIdx(0);
@@ -48,11 +49,16 @@ export default function NoteDetail() {
 
   const toggleLike = async () => {
     if (!requireLogin() || !note) return;
+    // 接口是「切换」语义：连点两次会一赞一取消，且回报顺序可能乱序 → 请求期间禁用手势
+    if (busy.current) return;
+    busy.current = true;
     try {
       const r = await api.like(note.id);
       setNote((n) => ({ ...n, interactInfo: { ...n.interactInfo, liked: r.liked, likedCount: r.likedCount } }));
     } catch (e) {
       toast(e.message);
+    } finally {
+      busy.current = false;
     }
   };
 
@@ -88,9 +94,10 @@ export default function NoteDetail() {
     if (!content) return toast('说点什么吧');
     try {
       const c = await api.postComment(id, content, replyTo?.id);
-      if (replyTo) {
+      // 服务端返回 rootId：回复任意层级的评论都挂到所属一级评论下，刷新后也不会丢
+      if (c.rootId) {
         setComments((list) =>
-          list.map((x) => (x.id === replyTo.parentId || x.id === replyTo.id ? { ...x, subComments: [...(x.subComments || []), { ...c, subComments: [] }] } : x))
+          list.map((x) => (x.id === c.rootId ? { ...x, subComments: [...(x.subComments || []), c] } : x))
         );
       } else {
         setComments((list) => [c, ...list]);

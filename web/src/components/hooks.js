@@ -32,12 +32,19 @@ export function useIsDesktop() {
 /** 触底加载更多 */
 export function useReachBottom(cb, deps = []) {
   useEffect(() => {
+    const near = () => document.documentElement.scrollHeight - window.scrollY - window.innerHeight < 600;
     const onScroll = () => {
-      const doc = document.documentElement;
-      if (doc.scrollHeight - window.scrollY - window.innerHeight < 600) cb();
+      if (near()) cb();
     };
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    // 首屏内容不满一屏时 scroll 事件永远不会触发 → 补一次检查（调用方自带 hasMore/loading 守卫）
+    const raf = requestAnimationFrame(() => {
+      if (near()) cb();
+    });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(raf);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }

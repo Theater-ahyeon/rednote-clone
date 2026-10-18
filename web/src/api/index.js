@@ -44,6 +44,16 @@ async function request(path, { method = 'GET', body, headers = {}, raw = false }
   return json.data;
 }
 
+/** 拼 query：undefined / null / 空串 一律丢弃（否则 URL 里会出现 cursor=undefined） */
+function qs(params = {}) {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '') continue;
+    sp.set(k, String(v));
+  }
+  return sp.toString();
+}
+
 export const api = {
   // ---------- 认证 ----------
   login: (username, password) => request('/api/auth/login', { method: 'POST', body: { username, password } }),
@@ -54,7 +64,7 @@ export const api = {
   demoLogin: () => request('/api/auth/demo'),
 
   // ---------- 笔记 ----------
-  feed: (params = {}) => request('/api/notes/feed?' + new URLSearchParams(params)),
+  feed: (params = {}) => request('/api/notes/feed?' + qs(params)),
   noteDetail: (id) => request(`/api/notes/${id}`),
   publish: (payload) => request('/api/notes', { method: 'POST', body: payload }),
   deleteNote: (id) => request(`/api/notes/${id}`, { method: 'DELETE' }),
@@ -67,7 +77,7 @@ export const api = {
 
   // ---------- 用户 ----------
   user: (id) => request(`/api/users/${id}`),
-  userNotes: (id, params) => request(`/api/users/${id}/notes?` + new URLSearchParams(params)),
+  userNotes: (id, params) => request(`/api/users/${id}/notes?` + qs(params)),
   follow: (id) => request(`/api/users/${id}/follow`, { method: 'POST' }),
   followers: (id) => request(`/api/users/${id}/followers`),
   following: (id) => request(`/api/users/${id}/following`),
@@ -76,7 +86,7 @@ export const api = {
   // ---------- 搜索 ----------
   hot: () => request('/api/search/hot'),
   suggest: (keyword) => request(`/api/search/suggest?keyword=${encodeURIComponent(keyword)}`),
-  searchNotes: (params) => request('/api/search/notes?' + new URLSearchParams(params)),
+  searchNotes: (params) => request('/api/search/notes?' + qs(params)),
   searchHistory: () => request('/api/search/history'),
   clearHistory: () => request('/api/search/history', { method: 'DELETE' }),
 
@@ -96,6 +106,9 @@ export const api = {
     const fd = new FormData();
     files.forEach((f) => fd.append('files', f));
     return request('/api/upload/multi', { method: 'POST', body: fd });
+  },
+  deleteUpload(url) {
+    return request('/api/upload?url=' + encodeURIComponent(url), { method: 'DELETE' });
   },
 
   // ---------- 频道 ----------

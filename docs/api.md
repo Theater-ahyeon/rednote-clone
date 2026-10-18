@@ -13,7 +13,7 @@
 | POST | `/api/auth/login` | `{username, password}` | 登录，返回 `{token, user}` |
 | GET  | `/api/auth/me` | Header token | 当前用户信息 |
 | PUT  | `/api/auth/me` | `{nickname?, bio?, gender?, ipLocation?, avatar?}` | 编辑资料 |
-| GET  | `/api/auth/demo` | - | 一键体验：返回种子账号 `demo` 的 token |
+| GET  | `/api/auth/demo` | - | 一键体验：返回种子账号 `demo` 的 token（仅演示环境，生产默认 404；`DEMO_LOGIN=1` 可开） |
 
 `user` 结构：
 
@@ -31,14 +31,14 @@
 
 | 方法 | 路径 | 参数 | 说明 |
 |---|---|---|---|
-| GET | `/api/notes/feed` | `tab=recommend|following|nearby`，`cursor`，`limit` | 瀑布流，keyset 分页 |
+| GET | `/api/notes/feed` | `tab=recommend|following|nearby`，`channel=美食`，`cursor`，`limit` | 瀑布流，keyset 分页；`channel` 在服务端按话题过滤 |
 | GET | `/api/notes/:id` | - | 笔记详情（附 `relatedNotes` 相关推荐），浏览量 +1 |
 | POST | `/api/notes` | `{title, content, images[], topics[], location}` | 发布图文笔记 🔒 |
 | DELETE | `/api/notes/:id` | - | 删除自己的笔记 🔒 |
 | POST | `/api/notes/:id/like` | - | 点赞/取消点赞（幂等切换）🔒 |
 | POST | `/api/notes/:id/collect` | - | 收藏/取消收藏 🔒 |
-| GET | `/api/notes/:id/comments` | - | 评论列表（含二级评论） |
-| POST | `/api/notes/:id/comments` | `{content, parentId?}` | 发表评论 🔒 |
+| GET | `/api/notes/:id/comments` | - | 评论列表（一级评论 + `subComments`，按 `rootId` 归组，支持多级回复） |
+| POST | `/api/notes/:id/comments` | `{content, parentId?}` | 发表评论 🔒；`parentId` 必须是同笔记的评论，否则 400 |
 | POST | `/api/notes/:id/comments/:cid/like` | - | 评论点赞 🔒 |
 
 🔒 = 需要登录
@@ -79,7 +79,7 @@
 |---|---|---|
 | GET | `/api/search/hot` | 热搜榜 TOP20（`{keyword, heat, tag, rank}`，tag ∈ 热/新/爆） |
 | GET | `/api/search/suggest?keyword=` | 搜索联想词 |
-| GET | `/api/search/notes?keyword=&page=&sort=hot` | 笔记搜索（自动写入搜索历史） |
+| GET | `/api/search/notes?keyword=&page=&sort=` | 笔记搜索（自动写入搜索历史）；`sort` = `general`（互动加权，默认）/`time`（最新）/`hot`（最热） |
 | GET | `/api/search/history` | 搜索历史 🔒（最多 20 条） |
 | DELETE | `/api/search/history` | 清空搜索历史 🔒 |
 | GET | `/api/search/topics?keyword=` | 话题聚合 |
@@ -99,6 +99,6 @@
 |---|---|---|
 | POST | `/api/upload` | 单图上传，字段名 `file`，≤12MB 🔒 |
 | POST | `/api/upload/multi` | 多图上传（≤9 张），字段名 `files` 🔒 |
-| DELETE | `/api/upload/?url=/uploads/xx` | 删除已上传文件 🔒 |
+| DELETE | `/api/upload/?url=/uploads/xx` | 删除已上传文件 🔒（只能删自己上传的，他人文件返回 403） |
 | GET | `/api/channels` | 首页频道列表 |
 | GET | `/api/health` | 健康检查 |

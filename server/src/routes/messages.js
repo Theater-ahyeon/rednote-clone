@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from '../db.js';
-import { ok, timeAgo } from '../utils/index.js';
+import { ok, timeAgo, parseJSON } from '../utils/index.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -54,7 +54,9 @@ router.get('/:box', requireAuth, (req, res) => {
        WHERE m.to_user_id = ? AND m.box = ? ORDER BY m.created_at DESC LIMIT 60`
     )
     .all(uid, box);
-  db.prepare('UPDATE messages SET read = 1 WHERE to_user_id = ? AND box = ?').run(uid, box);
+  // 只把「本轮真正返回给用户看」的消息标为已读：直接按 box 全量置位会吞掉 60 条之外的未读
+  const readStmt = db.prepare('UPDATE messages SET read = 1 WHERE id = ?');
+  for (const m of rows) if (!m.read) readStmt.run(m.id);
   const coverOf = db.prepare('SELECT images FROM notes WHERE id = ?');
   const list = rows.map((m) => ({
     id: String(m.id),
@@ -64,7 +66,7 @@ router.get('/:box', requireAuth, (req, res) => {
     time: timeAgo(m.created_at),
     createdAt: m.created_at,
     user: { id: m.from_user_id, nickname: m.nickname, avatar: m.avatar },
-    noteCover: m.note_id ? JSON.parse(coverOf.get(m.note_id)?.images || '[]')[0] || null : null
+    noteCover: m.note_id ? parseJSON(coverOf.get(m.note_id)?.images, [])[0] || null : null
   }));
   return ok(res, { list });
 });

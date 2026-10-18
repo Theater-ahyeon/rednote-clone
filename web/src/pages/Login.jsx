@@ -87,7 +87,7 @@ export default function Login() {
         </div>
 
         <div className="login-tip" onClick={demo} style={{ cursor: 'pointer', marginTop: 14 }}>
-          <b>一键体验</b>：使用种子账号 demo / 123456 直接登录
+          <b>一键体验</b>：用种子账号 demo / 123456 直接登录（演示环境可用，生产部署默认关闭）
         </div>
 
         <div className="login-switch" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>

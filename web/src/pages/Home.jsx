@@ -42,8 +42,10 @@ export default function Home() {
       }
       setLoading(true);
       try {
+        // 频道由服务端按话题过滤：前端只在已加载的 20 条里 filter，冷门频道会直接空列表
         const d = await api.feed({
           tab,
+          channel,
           cursor: reset ? undefined : cursor || undefined,
           limit: 20
         });
@@ -57,7 +59,7 @@ export default function Home() {
         setRefreshing(false);
       }
     },
-    [tab, cursor, loading, token]
+    [tab, channel, cursor, loading, token]
   );
 
   useEffect(() => {
@@ -66,13 +68,11 @@ export default function Home() {
     setHasMore(true);
     load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, token]);
+  }, [tab, channel, token]);
 
   useReachBottom(() => {
     if (hasMore && !loading) load();
   }, [hasMore, loading, notes.length]);
-
-  const visible = channel === '推荐' ? notes : notes.filter((n) => (n.topics || []).includes(channel));
 
   const onTab = (key) => {
     if ((key === 'following' || key === 'nearby') && !token) {
@@ -84,19 +84,31 @@ export default function Home() {
   };
 
   const startY = useRef(0);
-  const onTouchStart = (e) => (startY.current = e.touches[0].clientY);
-  const onTouchMove = (e) => {
-    const dy = e.touches[0].clientY - startY.current;
-    if (dy > 60 && window.scrollY === 0 && !refreshing) {
-      e.preventDefault(); // 阻止浏览器自带的下拉回弹，避免双重滚动
+  const pageRef = useRef(null);
+  const pullRef = useRef({ refreshing, load });
+  pullRef.current = { refreshing, load };
+
+  // React 18 把 touchmove 挂成 passive 监听，onTouchMove 里 preventDefault 是无效的（控制台会告警），
+  // 下拉刷新必须自己挂一个 passive:false 的原生监听，否则页面回弹和刷新会同时发生
+  useEffect(() => {
+    const el = pageRef.current;
+    if (!el) return;
+    const onMove = (e) => {
+      if (window.scrollY > 0 || pullRef.current.refreshing) return;
+      const dy = e.touches[0].clientY - startY.current;
+      if (dy <= 60) return;
+      e.preventDefault();
       setRefreshing(true);
-      setCursor(null);
-      load(true);
-    }
-  };
+      pullRef.current.load(true);
+    };
+    el.addEventListener('touchmove', onMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onMove);
+  }, []);
+
+  const onTouchStart = (e) => (startY.current = e.touches[0].clientY);
 
   return (
-    <div className="page-with-tabbar" onTouchStart={onTouchStart} onTouchMove={onTouchMove}>
+    <div className="page-with-tabbar" ref={pageRef} onTouchStart={onTouchStart}>
       {/* 顶部：发现 / 关注 / 附近 */}
       <div className="navbar center">
         <div className="nav-left">
@@ -127,7 +139,7 @@ export default function Home() {
 
       {(tab === 'following' || tab === 'nearby') && !token ? (
         <NeedLogin onLogin={() => navigate('/login')} />
-      ) : visible.length === 0 && !loading ? (
+      ) : notes.length === 0 && !loading ? (
         <div className="empty">
           <span className="empty-emoji">🫧</span>
           暂无内容，换个频道看看
@@ -135,7 +147,7 @@ export default function Home() {
       ) : (
         <>
           <Waterfall
-            notes={visible}
+            notes={notes}
             cols={cols}
             onCardClick={(n) => navigate(`/note/${n.id}`)}
             onUserClick={(u) => u?.id && navigate(`/user/${u.id}`)}

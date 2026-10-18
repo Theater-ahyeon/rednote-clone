@@ -16,18 +16,25 @@ export default function Messages() {
   const [boxes, setBoxes] = useState([]);
   const [list, setList] = useState([]);
 
+  const loadBoxes = () => api.messageBoxes().then((d) => setBoxes(d.boxes)).catch(() => {});
+
+  // 进出某个 box 都要重拉一次盒子和角标：否则读完消息返回，红点还挂在上面
   useEffect(() => {
     if (!token) return;
-    api.messageBoxes().then((d) => setBoxes(d.boxes)).catch(() => {});
-  }, [token]);
+    loadBoxes();
+  }, [token, box]);
 
   useEffect(() => {
     if (!token || !box) return;
     api
       .messageList(box)
-      .then((d) => setList(d.list))
+      // 服务端在读列表时已把返回项标为已读，等它返回再刷新角标才是正确顺序
+      .then((d) => {
+        setList(d.list);
+        return refreshUnread();
+      })
+      .then(loadBoxes)
       .catch(() => {});
-    refreshUnread();
   }, [token, box]);
 
   if (!token) {

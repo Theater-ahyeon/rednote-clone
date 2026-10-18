@@ -76,7 +76,8 @@ db.exec(`
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     note_id    INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    parent_id  INTEGER,
+    parent_id  INTEGER,          -- 被回复的评论 id（可能是任意层级）
+    root_id    INTEGER,          -- 所属一级评论 id；一级评论为 NULL
     content    TEXT NOT NULL,
     like_count INTEGER NOT NULL DEFAULT 0,
     ip_location TEXT NOT NULL DEFAULT '广东',
@@ -129,6 +130,50 @@ db.exec(`
     name TEXT NOT NULL,
     sort INTEGER NOT NULL DEFAULT 0
   );
+
+  -- 上传文件归属：没有这张表就无法判断「删的是不是自己的图」（越权删除）
+  CREATE TABLE IF NOT EXISTS uploads (
+    name       TEXT PRIMARY KEY,          -- 落盘文件名（含扩展名）
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    note_id    INTEGER,                   -- 已发布到哪条笔记；NULL = 还没用上（孤儿）
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id);
   `);
+
+/**
+ * 轻量迁移：老库没有的列就地补上。
+ * 项目没有 migration 框架，但加列必须兼容已经跑起来的数据库，否则升级即崩。
+ */
+function ensureColumn(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+
+ensureColumn('comments', 'root_id', 'root_id INTEGER');
+db.exec('CREATE INDEX IF NOT EXISTS idx_comments_root ON comments(root_id)');
+
+// 老数据的多级回复只有 parent_id，没有 root_id → 按父链回溯补全，否则回复会永远不显示
+const pending = db.prepare('SELECT id, parent_id FROM comments WHERE parent_id IS NOT NULL AND root_id IS NULL').all();
+if (pending.length) {
+  const getOne = db.prepare('SELECT id, parent_id FROM comments WHERE id = ?');
+  const setRoot = db.prepare('UPDATE comments SET root_id = ? WHERE id = ?');
+  const fix = db.transaction((rows) => {
+    for (const r of rows) {
+      let cur = getOne.get(r.parent_id);
+      let depth = 0;
+      let root = null;
+      while (cur && depth++ < 32) {
+        if (!cur.parent_id) {
+          root = cur.id;
+          break;
+        }
+        cur = getOne.get(cur.parent_id);
+      }
+      if (root) setRoot.run(root, r.id);
+    }
+  });
+  fix(pending);
+}
 
 export default db;

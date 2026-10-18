@@ -182,7 +182,7 @@ function run() {
 
   // 评论
   const insertComment = db.prepare(
-    `INSERT INTO comments (note_id, user_id, parent_id, content, like_count, ip_location, created_at) VALUES (?,?,?,?,?,?,?)`
+    `INSERT INTO comments (note_id, user_id, parent_id, root_id, content, like_count, ip_location, created_at) VALUES (?,?,?,?,?,?,?,?)`
   );
   const userRows = db.prepare('SELECT * FROM users').all();
   noteIds.forEach((nid) => {
@@ -192,11 +192,11 @@ function run() {
       const u = userRows[int(0, userRows.length - 1)];
       if (used.has(u.id)) continue;
       used.add(u.id);
-      const cid = insertComment.run(nid, u.id, null, pick(COMMENTS), int(0, 320), u.ip_location, now - int(1, 20) * 3600000)
+      const cid = insertComment.run(nid, u.id, null, null, pick(COMMENTS), int(0, 320), u.ip_location, now - int(1, 20) * 3600000)
         .lastInsertRowid;
       if (rnd() > 0.6) {
         const u2 = userRows[int(0, userRows.length - 1)];
-        insertComment.run(nid, u2.id, Number(cid), pick(COMMENTS), int(0, 40), u2.ip_location, now - int(1, 10) * 3600000);
+        insertComment.run(nid, u2.id, Number(cid), Number(cid), pick(COMMENTS), int(0, 40), u2.ip_location, now - int(1, 10) * 3600000);
       }
     }
     const cc = db.prepare('SELECT COUNT(*) c FROM comments WHERE note_id = ?').get(nid).c;

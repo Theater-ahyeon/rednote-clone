@@ -55,7 +55,12 @@ export default function Publish() {
       });
   };
 
-  const remove = (i) => setImages((prev) => prev.filter((_, k) => k !== i));
+  const remove = (i) => {
+    const img = images[i];
+    setImages((prev) => prev.filter((_, k) => k !== i));
+    // 顺手把服务端文件删掉：只在前端移除会留下一堆没人引用的孤儿图
+    if (img?.url?.startsWith('/uploads/')) api.deleteUpload(img.url).catch(() => {});
+  };
 
   const publish = async () => {
     if (!images.length && !desc.trim()) return toast('至少上传一张图片或写点内容');
