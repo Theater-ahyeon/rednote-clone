@@ -1,6 +1,6 @@
 {
   "appId": "com.rednote.clone",
-  "appName": "小红书",
+  "appName": "RedNote Clone",
   "webDir": "dist-native",
   "server": {
     "androidScheme": "https",

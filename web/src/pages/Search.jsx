@@ -105,7 +105,7 @@ export default function Search() {
           <input
             ref={inputRef}
             value={text}
-            placeholder="搜索小红书"
+            placeholder="搜索 RedNote"
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
           />
@@ -176,7 +176,7 @@ export default function Search() {
               </div>
             </>
           )}
-          <div className="section-title">小红书热搜榜</div>
+          <div className="section-title">RedNote 热搜榜</div>
           <div className="hot-list">
             {hot.map((h) => (
               <div className="hot-item" key={h.keyword} onClick={() => submit(h.keyword)}>

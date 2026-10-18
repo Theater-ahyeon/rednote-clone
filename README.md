@@ -7,15 +7,22 @@
 > 基于对小红书 PC Web 端的逆向分析（构建产物静态分析 → 设计令牌 / 接口语义 / 数据模型），从零实现的一套**高保真仿小红书**应用。
 > 一份 React 代码，同时跑在 **Web 浏览器、Android 客户端（Capacitor）、Windows 桌面客户端（Electron）** 三个端。
 
+> ⚠️ **合规声明（重要）**
+> 本项目是**个人学习 / 技术演示**用途的开源仿写项目，**不是小红书官方产品，与小红书（行吟信息科技有限公司）无任何关联**。
+> - 未调用任何小红书真实接口，未绕过其签名或风控，未收集、存储或转发任何真实用户数据
+> - 全部代码独立编写，全部数据为本地 SQLite 种子数据，图片来自免费图库
+> - 「小红书」商标归原权利方所有；本项目已改用 **RedNote Clone** 作为产品名以避免混淆
+> - **请勿将本项目用于商业用途或对外运营**，下载安装包即视为知悉上述内容
+
 ## 📦 直接下载安装包
 
 **→ [Releases 页面](https://github.com/Theater-ahyeon/rednote-clone/releases/latest)**（当前 v1.0.0）
 
 | 文件 | 平台 | 说明 |
 |---|---|---|
-| `rednote-clone-1.0.0-android.apk` | Android 7.0+ | 手机侧载或 `adb install` |
-| `rednote-clone-1.0.0-setup.exe` | Windows 10/11 x64 | NSIS 安装程序（可选安装目录） |
-| `rednote-clone-1.0.0-portable.exe` | Windows 10/11 x64 | 便携版，免安装双击即用 |
+| `rednote-clone-1.0.1-android.apk` | Android 7.0+ | 手机侧载或 `adb install` |
+| `rednote-clone-1.0.1-setup.exe` | Windows 10/11 x64 | NSIS 安装程序（可选安装目录） |
+| `rednote-clone-1.0.1-portable.exe` | Windows 10/11 x64 | 便携版，免安装双击即用 |
 
 > 安装包未做代码签名，Windows SmartScreen 可能提示「未知发布者」——「更多信息 → 仍要运行」即可。
 > 三个客户端都只负责界面，数据来自本机后端：`cd server && npm install && npm run seed && npm start`（默认 `http://localhost:3001`）；Android 端再执行 `adb reverse tcp:3001 tcp:3001`。

@@ -38,7 +38,7 @@ function createWindow() {
     height: 932,
     minWidth: 380,
     minHeight: 640,
-    title: '小红书',
+    title: 'RedNote Clone',
     backgroundColor: '#ffffff',
     autoHideMenuBar: true,
     icon: path.join(__dirname, '../resources/icon.png'),
@@ -91,7 +91,7 @@ function createWindow() {
       'data:text/html;charset=utf-8,' +
         encodeURIComponent(
           `<body style="font-family:PingFang SC,Microsoft YaHei;padding:40px;background:#fff">
-            <h2 style="color:#ff2442">🟥 无法加载小红书</h2>
+            <h2 style="color:#ff2442">🟥 无法加载 RedNote Clone</h2>
             <p>错误码 ${code}：${desc}</p>
             <p style="color:#666">请先启动后端服务：</p>
             <pre style="background:#f5f5f5;padding:12px;border-radius:8px">cd server
@@ -134,7 +134,7 @@ function showBackendMissing() {
   const win = new BrowserWindow({
     width: 430,
     height: 932,
-    title: '小红书',
+    title: 'RedNote Clone',
     autoHideMenuBar: true,
     backgroundColor: '#ffffff'
   });

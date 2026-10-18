@@ -135,7 +135,7 @@ export default function Profile() {
           <img className="avatar avatar-lg" src={user.avatar} alt="" />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 20, fontWeight: 700 }}>{user.nickname}</div>
-            <div className="profile-id">小红书号：{100000 + user.id}</div>
+            <div className="profile-id">红薯号：{100000 + user.id}</div>
             <div className="profile-id">IP 属地：{user.ipLocation}</div>
           </div>
         </div>

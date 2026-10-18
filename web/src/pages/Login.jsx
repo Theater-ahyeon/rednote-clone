@@ -54,9 +54,9 @@ export default function Login() {
   return (
     <div className="login">
       <div className="login-logo">
-        小红书 <Icon name="fire" size={22} color="#ff2442" />
+        RedNote Clone <Icon name="fire" size={22} color="#ff2442" />
       </div>
-      <div className="login-slogan">{mode === 'login' ? '欢迎回来，记录此刻的生活' : '加入小红书，发现你感兴趣的生活'}</div>
+      <div className="login-slogan">{mode === 'login' ? '欢迎回来，记录此刻的生活' : '加入 RedNote Clone，发现你感兴趣的生活'}</div>
 
       <div className="login-form">
         <div className="field">

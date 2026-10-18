@@ -51,7 +51,7 @@ export default function UserList() {
             <img className="avatar" src={u.avatar} alt="" onClick={() => navigate(`/user/${u.id}`)} style={{ cursor: 'pointer' }} />
             <div className="ur-main" onClick={() => navigate(`/user/${u.id}`)}>
               <div className="ur-name">{u.nickname}</div>
-              <div className="ur-bio">{u.bio || `小红书号：${100000 + u.id}`}</div>
+              <div className="ur-bio">{u.bio || `红薯号：${100000 + u.id}`}</div>
             </div>
             {!u.isSelf && (
               <button className={'btn btn-sm ' + (followSet[u.id] ? 'btn-ghost' : 'btn-primary')} onClick={() => toggle(u.id)}>

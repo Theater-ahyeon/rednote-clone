@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">小红书</string>
-    <string name="title_activity_main">小红书</string>
+    <string name="app_name">RedNote Clone</string>
+    <string name="title_activity_main">RedNote Clone</string>
     <string name="package_name">com.rednote.clone</string>
     <string name="custom_url_scheme">com.rednote.clone</string>
 </resources>

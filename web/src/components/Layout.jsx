@@ -63,8 +63,8 @@ export function SideBar() {
   return (
     <aside className="desk-sidebar">
       <div className="desk-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-        <span className="logo-badge">书</span>
-        <span>小红书</span>
+        <span className="logo-badge">薯</span>
+        <span>RedNote Clone</span>
       </div>
       <div className="desk-nav">
         {DESK_NAV.map((n) => (
@@ -84,7 +84,7 @@ export function SideBar() {
         <img className="avatar avatar-sm" src={user?.avatar} alt="" onClick={() => navigate('/me')} style={{ cursor: 'pointer' }} />
         <div style={{ minWidth: 0 }}>
           <div className="u-name">{user ? user.nickname : '未登录'}</div>
-          <div className="u-id">{user ? `小红书号：${100000 + user.id}` : '点击登录体验完整功能'}</div>
+          <div className="u-id">{user ? `红薯号：${100000 + user.id}` : '点击登录体验完整功能'}</div>
         </div>
       </div>
     </aside>
@@ -114,7 +114,7 @@ export function DeskTopBar() {
       <div style={{ marginLeft: 'auto' }}>
         <div className="search-input" style={{ width: 260, cursor: 'pointer' }} onClick={() => navigate('/search')}>
           <Icon name="search" size={16} color="#999" />
-          <span className="ph">搜索小红书</span>
+          <span className="ph">搜索 RedNote</span>
         </div>
       </div>
     </div>
